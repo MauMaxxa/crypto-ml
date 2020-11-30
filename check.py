@@ -4,10 +4,8 @@ from binance.client import Client
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
-#from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.metrics import accuracy_score, mean_squared_error
 from keras.models import Sequential
-print('test')
-quit()
 from keras.layers import Dense
 from keras.layers import LSTM
 import matplotlib.patches as mpatches
@@ -17,7 +15,11 @@ import sys
 #client = Client('API_KEY', 'SECRET_KEY')
 client = Client('', '')
 
-crypto = client.get_historical_klines(symbol=sys.argv[1], interval=Client.KLINE_INTERVAL_30MINUTE, start_str="23 Nov, 2020")
+crypto = client.get_historical_klines(symbol=sys.argv[1], interval=Client.KLINE_INTERVAL_30MINUTE, start_str="15 Nov, 2020")
+ds_length = len(crypto)
+ds_perc = 80
+trn_length = int(ds_length/100*ds_perc)
+
 crypto = pd.DataFrame(crypto, columns=['Open time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close time', 'Quote asset volume', 'Number of trades', 'Taker buy base asset volume', 'Taker buy quote asset volume', 'Ignore'])
 
 
@@ -32,8 +34,8 @@ data = crypto.iloc[:,3:4].astype(float).values
 scaler= MinMaxScaler()
 data= scaler.fit_transform(data)
 
-training_set = data[:10000]
-test_set = data[10000:]
+training_set = data[:trn_length-1]
+test_set = data[trn_length:]
 
 X_train = training_set[0:len(training_set)-1]
 y_train = training_set[1:len(training_set)]
@@ -53,18 +55,18 @@ model.add(Dense(1))
 model.compile(loss='mean_squared_error', optimizer='adam')
 model.fit(X_train, y_train, epochs=50, batch_size=16, shuffle=False)
 
-model.save(sys.argv[1]+'_model.h5')
+model.save("models/"+sys.argv[1]+'_model.h5')
 
 
 predicted_price = model.predict(X_test)
 predicted_price = scaler.inverse_transform(predicted_price)
 real_price = scaler.inverse_transform(y_test)
-'''
+
 preds = predicted_price
-accuracy = accuracy_score(y_test, predicted_price)
+#accuracy = accuracy_score(y_test, predicted_price)
 mse = mean_squared_error(y_test, predicted_price)
 
-print("Accuracy = " + str(accuracy))
+#print("Accuracy = " + str(accuracy))
 print("MSE = " + str(mse))
 
 falsePos = 0
@@ -91,7 +93,7 @@ print("False Pos = " + str(falsePos/total))
 print("False Neg = " + str(falseNeg/total))
 print("True Pos = " + str(truePos/total))
 print("True Neg = " + str(trueNeg/total))
-'''
+
 
 plt.figure(figsize=(10,4))
 red_patch = mpatches.Patch(color='red', label='Predicted Price of '+sys.argv[1])
